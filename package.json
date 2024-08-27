@@ -1,0 +1,57 @@
+{
+  "name": "protocol_tester",
+  "version": "0.0.2",
+  "main": "electron/main.cjs",
+  "private": true,
+  "type": "module",
+  "config": {
+    "forge": {
+      "packagerConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "protocol_tester",
+            "authors": "guixuan@micmote",
+            "description": "this program can simulate terminals and gateways to do protocol test"
+          },
+          "platforms": [
+            "win32"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "win32"
+          ]
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && nodemon --exec cross-env NODE_ENV=development electron . --watch ./ --ext .js,.cjs,.mjs,.html,.css,.vue\"",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "vite build && electron-forge make"
+  },
+  "dependencies": {
+    "vue": "^3.4.29",
+    "vue-router": "^4.3.3"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.4.0",
+    "@electron-forge/maker-squirrel": "^7.4.0",
+    "@electron-forge/maker-zip": "^7.4.0",
+    "@vitejs/plugin-vue": "^5.0.5",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "cross-zip": "^4.0.1",
+    "electron": "^32.0.1",
+    "nodemon": "^3.1.4",
+    "vite": "^5.3.1",
+    "wait-on": "^8.0.0"
+  }
+}
