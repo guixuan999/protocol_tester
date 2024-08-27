@@ -39,3 +39,9 @@ npm run electron:dev
 ```sh
 npm run make
 ```
+
+### try the following if network is "bad"
+1. use cnpm to replace npm. to install: npm install -g cnpm --registry=https://registry.npmmirror.com
+2. set envionment variable as: $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"  (powershell)
+3. scientific surfing...
+4. npm config set proxy...
