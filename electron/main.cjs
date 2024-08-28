@@ -1,6 +1,19 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { SerialPort } = require('serialport')
+const { fork } = require('node:child_process');
+
 const NODE_ENV = process.env.NODE_ENV;
+
+async function handleListSerial(event) {
+  return await SerialPort.list()
+}
+
+function handleConnectSerial(event, params) {
+  console.log("handleConnectSerial()", params)
+  var serial_process = fork('./electron/ota_interface/radio_process.js', [JSON.stringify(params)])
+
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -27,7 +40,11 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  ipcMain.handle('list_serial', handleListSerial)
+  ipcMain.handle('connect_serial', handleConnectSerial)
+  createWindow()
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -40,3 +57,4 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
