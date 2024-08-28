@@ -38,6 +38,7 @@
     "make": "vite build && electron-forge make"
   },
   "dependencies": {
+    "element-plus": "^2.8.1",
     "vue": "^3.4.29",
     "vue-router": "^4.3.3"
   },
@@ -51,6 +52,8 @@
     "cross-zip": "^4.0.1",
     "electron": "^32.0.1",
     "nodemon": "^3.1.4",
+    "unplugin-auto-import": "^0.18.2",
+    "unplugin-vue-components": "^0.27.4",
     "vite": "^5.3.1",
     "wait-on": "^8.0.0"
   }
