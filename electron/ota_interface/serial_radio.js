@@ -12,7 +12,7 @@ class SerialRadio extends Radio {
                 if (self.cb_init) {
                     self.cb_init({
                         result: false,
-                        info: err
+                        info: err.toString()
                     })
                 }
             } else {

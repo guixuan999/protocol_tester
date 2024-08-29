@@ -5,18 +5,39 @@ const { fork } = require('node:child_process');
 
 const NODE_ENV = process.env.NODE_ENV;
 
+let mainWindow, serial_process;
+
 async function handleListSerial(event) {
   return await SerialPort.list()
 }
 
 function handleConnectSerial(event, params) {
   console.log("handleConnectSerial()", params)
-  var serial_process = fork('./electron/ota_interface/radio_process.js', [JSON.stringify(params)])
+  serial_process = fork('./electron/ota_interface/radio_process.js', [JSON.stringify(params)])
+  //mainWindow.webContents.send('result:serial-connect', {result: "serial port successful opened", info: "OK"})
+  serial_process.on("message", (message) => {
+    console.log("from serial_process:", message)
+    switch(message.code) {
+      case "init":
+        mainWindow.webContents.send('result:serial-connect', message)
+        break
+    }
+    
+  })
+  serial_process.on("exit", code => {
+    console.log(`serial_process exited with code ${code}`)
+  })
+}
 
+async function handleDisconnectSerial() {
+  serial_process.kill()
+  return new Promise((resolve, reject) => {
+      resolve('Disconnect completed successfully');
+  });
 }
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -43,6 +64,7 @@ function createWindow() {
 app.whenReady().then(() => {
   ipcMain.handle('list_serial', handleListSerial)
   ipcMain.handle('connect_serial', handleConnectSerial)
+  ipcMain.handle('disconnect_serial', handleDisconnectSerial)
   createWindow()
 });
 
