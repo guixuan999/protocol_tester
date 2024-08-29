@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
+const get_now_str = require('./utils.cjs')
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -14,12 +15,16 @@ async function handleListSerial(event) {
 function handleConnectSerial(event, params) {
   console.log("handleConnectSerial()", params)
   serial_process = fork('./electron/ota_interface/radio_process.js', [JSON.stringify(params)])
-  //mainWindow.webContents.send('result:serial-connect', {result: "serial port successful opened", info: "OK"})
   serial_process.on("message", (message) => {
     console.log("from serial_process:", message)
     switch(message.code) {
       case "init":
         mainWindow.webContents.send('result:serial-connect', message)
+        break
+      case "in":
+        message.date = get_now_str()
+        message.direction = "IN"
+        mainWindow.webContents.send('serial:received', message)
         break
     }
     

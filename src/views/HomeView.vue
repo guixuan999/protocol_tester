@@ -12,6 +12,7 @@ const bound_rate = ref(bound_rates[1])
 
 const serial_state = ref("disconnected") // "connected" or "disconnect" or [error message from main process while connecting] 
 const serial_ui_disable = ref(false)
+const tableData = ref([])
 
 async function list_serial(event) {
   var r = await window.electron.listSerial()
@@ -67,6 +68,12 @@ window.electron.ipcRenderer_on('result:serial-connect', (event, message) => {
 
 });
 
+window.electron.ipcRenderer_on('serial:received', (event, message) => {
+  console.log('Message from main process:', message);
+  tableData.value.push(message)
+
+});
+
 </script>
 
 <template>
@@ -84,6 +91,12 @@ window.electron.ipcRenderer_on('result:serial-connect', (event, message) => {
   <el-button :type="serial_state=='connected' ? 'danger' : 'primary'" :disabled="serial_ui_disable" @click="connect_serial">{{ serial_state == "connected" ?
     "Disconnect" : "Connect" }}</el-button>
   <span>{{ serial_state }}</span>
+
+  <el-table :data="tableData" border style="width: 100%">
+    <el-table-column prop="date" label="Date" width="180" />
+    <el-table-column prop="direction" label="Direction" width="180" />
+    <el-table-column prop="raw" label="Raw" />
+  </el-table>
 
 
 </template>
