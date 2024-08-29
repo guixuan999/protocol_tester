@@ -4,6 +4,29 @@ const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
 const get_now_str = require('./utils.cjs')
 
+const sqlite3 = require('sqlite3').verbose();
+// 打开已有的数据库文件
+let database = new sqlite3.Database('./electron/db.db', (err) => {
+  if (err) {
+    console.error('Failed to open database:', err.message);
+  } else {
+    console.log('Connected to the SQLite database.');
+  }
+});
+// 插入一条记录到指定表中
+function insertRecord(table, data) {
+  const placeholders = Object.keys(data).map(() => '?').join(',');
+  const sql = `INSERT INTO ${table} (${Object.keys(data).join(',')}) VALUES (${placeholders})`;
+
+  database.run(sql, Object.values(data), function(err) {
+    if (err) {
+      console.error('Failed to insert record:', err.message);
+    } else {
+      console.log(`Record inserted with rowid ${this.lastID}`);
+    }
+  });
+}
+
 const NODE_ENV = process.env.NODE_ENV;
 
 let mainWindow, serial_process;
@@ -25,6 +48,8 @@ function handleConnectSerial(event, params) {
         message.date = get_now_str()
         message.direction = "IN"
         mainWindow.webContents.send('serial:received', message)
+        delete message.code  // table 'packages' in database has no field 'code'
+        insertRecord("packages", message)
         break
     }
     
