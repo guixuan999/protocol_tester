@@ -5,14 +5,24 @@ const { fork } = require('node:child_process');
 const get_now_str = require('./utils.cjs')
 
 const sqlite3 = require('sqlite3').verbose();
-// 打开已有的数据库文件
-let database = new sqlite3.Database('./electron/db.db', (err) => {
-  if (err) {
-    console.error('Failed to open database:', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-  }
-});
+
+
+// 创建表（如果不存在）
+function createTableIfNotExists(tableName, columns) {
+  const columnsDefinition = Object.entries(columns)
+    .map(([name, type]) => `${name} ${type}`)
+    .join(', ');
+  const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${columnsDefinition})`;
+
+  database.run(sql, (err) => {
+    if (err) {
+      console.error(`Failed to create table ${tableName}:`, err.message);
+    } else {
+      console.log(`Table ${tableName} is ready.`);
+    }
+  });
+}
+
 // 插入一条记录到指定表中
 function insertRecord(table, data) {
   const placeholders = Object.keys(data).map(() => '?').join(',');
@@ -27,6 +37,20 @@ function insertRecord(table, data) {
   });
 }
 
+// 打开已有的数据库文件
+let database = new sqlite3.Database('./database.db', (err) => {
+  if (err) {
+    console.error('Failed to open database:', err.message);
+    process.exit(1);
+  }
+  console.log('Connected to the SQLite database.');
+  createTableIfNotExists('packages', {date: "text", direction: "text", raw: "text"})
+  
+});
+
+
+
+
 const NODE_ENV = process.env.NODE_ENV;
 
 let mainWindow, serial_process;
@@ -37,7 +61,7 @@ async function handleListSerial(event) {
 
 function handleConnectSerial(event, params) {
   console.log("handleConnectSerial()", params)
-  serial_process = fork('./electron/ota_interface/radio_process.js', [JSON.stringify(params)])
+  serial_process = fork(`${__dirname}/ota_interface/radio_process.js`, [JSON.stringify(params)])
   serial_process.on("message", (message) => {
     console.log("from serial_process:", message)
     switch(message.code) {

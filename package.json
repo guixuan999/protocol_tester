@@ -6,7 +6,12 @@
   "type": "module",
   "config": {
     "forge": {
-      "packagerConfig": {},
+      "packagerConfig": {
+        "ignore": [
+          "database.db",
+          ".vscode"
+        ]
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",

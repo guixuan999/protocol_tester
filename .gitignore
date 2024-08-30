@@ -15,6 +15,7 @@ out
 dist-ssr
 coverage
 *.local
+database.db
 
 /cypress/videos/
 /cypress/screenshots/
