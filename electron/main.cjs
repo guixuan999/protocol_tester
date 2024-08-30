@@ -3,7 +3,7 @@ const path = require('path');
 const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
 const get_now_str = require('./utils.cjs')
-const { initDatabase, insertRecord } = require("./database.cjs")
+const { initDatabase, insertRecord, queryRecords } = require("./database.cjs")
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -18,19 +18,20 @@ function handleConnectSerial(event, params) {
   serial_process = fork(`${__dirname}/ota_interface/radio_process.js`, [JSON.stringify(params)])
   serial_process.on("message", (message) => {
     console.log("from serial_process:", message)
-    switch(message.code) {
+    switch (message.code) {
       case "init":
         mainWindow.webContents.send('result:serial-connect', message)
         break
       case "in":
         message.date = get_now_str()
         message.direction = "IN"
-        mainWindow.webContents.send('serial:received', message)
+        // inform rendering process a package is received
+        mainWindow.webContents.send('serial:received'/*, message*/)
         delete message.code  // table 'packages' in database has no field 'code'
         insertRecord("packages", message)
         break
     }
-    
+
   })
   serial_process.on("exit", code => {
     console.log(`serial_process exited with code ${code}`)
@@ -40,7 +41,15 @@ function handleConnectSerial(event, params) {
 async function handleDisconnectSerial() {
   serial_process.kill()
   return new Promise((resolve, reject) => {
-      resolve('Disconnect completed successfully');
+    resolve('Disconnect completed successfully');
+  });
+}
+
+async function handleGetPackages(event, params) {
+  console.log(params)
+  
+  return new Promise((resolve, reject) => {
+    resolve(queryRecords("packages", params));
   });
 }
 
@@ -61,7 +70,7 @@ function createWindow() {
     mainWindow.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    if(NODE_ENV === 'development') {
+    if (NODE_ENV === 'development') {
       mainWindow.loadURL('http://localhost:5173')
     } else {
       mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -75,6 +84,7 @@ app.whenReady().then(() => {
   ipcMain.handle('list_serial', handleListSerial)
   ipcMain.handle('connect_serial', handleConnectSerial)
   ipcMain.handle('disconnect_serial', handleDisconnectSerial)
+  ipcMain.handle('get_packages', handleGetPackages)
   createWindow()
 });
 

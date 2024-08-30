@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('electron', {
   receive: (channel, func) => ipcRenderer.on(channel, (event, ...args) => func(...args)),
   listSerial: () => ipcRenderer.invoke('list_serial'),
   connectSerial: (params) => ipcRenderer.invoke('connect_serial', params),
-  disconnetSerial: () => ipcRenderer.invoke('disconnect_serial')
+  disconnetSerial: () => ipcRenderer.invoke('disconnect_serial'),
+  getPackages: (params) => ipcRenderer.invoke('get_packages', params)
 });

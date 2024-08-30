@@ -68,9 +68,18 @@ window.electron.ipcRenderer_on('result:serial-connect', (event, message) => {
 
 });
 
-window.electron.ipcRenderer_on('serial:received', (event, message) => {
-  console.log('Message from main process:', message);
-  tableData.value.push(message)
+let pending_refreshing = false // this is for "don't access database too frequently"
+window.electron.ipcRenderer_on('serial:received', async (event /*, message*/) => {
+  console.log('a package received on serial');
+  if (!pending_refreshing) {
+    pending_refreshing = true
+    setTimeout(async () => {
+      var r = await window.electron.getPackages({ page: 1, pagesize: 15 })
+      console.log(r)
+      tableData.value = r.rows // r likes {total_pages: N, rows: [...]}
+      pending_refreshing = false
+    }, 1000);
+  }
 
 });
 
@@ -79,16 +88,17 @@ window.electron.ipcRenderer_on('serial:received', (event, message) => {
 <template>
 
   串口
-  <el-select v-model="serial_name" :disabled="serial_state=='connected'" size="large" style="width: 240px">
+  <el-select v-model="serial_name" :disabled="serial_state == 'connected'" size="large" style="width: 240px">
     <el-option v-for="item in serial_ports" :key="item.value" :label="item.label" :value="item.value" />
   </el-select>
   <el-button type="info" @click="list_serial">List</el-button>
 
   波特率
-  <el-select v-model="bound_rate" :disabled="serial_state=='connected'" size="large" style="width: 120px">
+  <el-select v-model="bound_rate" :disabled="serial_state == 'connected'" size="large" style="width: 120px">
     <el-option v-for="item in bound_rates" :key="item" :label="item" :value="item" />
   </el-select>
-  <el-button :type="serial_state=='connected' ? 'danger' : 'primary'" :disabled="serial_ui_disable" @click="connect_serial">{{ serial_state == "connected" ?
+  <el-button :type="serial_state == 'connected' ? 'danger' : 'primary'" :disabled="serial_ui_disable"
+    @click="connect_serial">{{ serial_state == "connected" ?
     "Disconnect" : "Connect" }}</el-button>
   <span>{{ serial_state }}</span>
 
