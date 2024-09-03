@@ -81,7 +81,7 @@ async function queryRecords(table, conditions) {
     }
     
     return {
-        total_pages,
+        total,
         rows: records
     }
 }
