@@ -152,17 +152,23 @@ async function pause_continue() {
     </el-row>
   </div>
 
+
   <div class="air_data">
     <el-row style="justify-content: center; padding-top: 10px; padding-bottom: 10px;font-size: 1.2em; color:blue">
       <span>空口数据</span>
     </el-row>
-    <el-row>
-      <el-table :data="tableData" border style="width: 100%">
-        <el-table-column prop="date" label="Date" width="200" />
-        <el-table-column prop="direction" label="Direction" width="120" />
-        <el-table-column prop="raw" label="Raw" />
-      </el-table>
-    </el-row>
+    <div class="container">
+      <div class="content">
+        <el-row>
+          <el-table :data="tableData" border style="width: 100%">
+            <el-table-column prop="date" label="Date" width="200" />
+            <el-table-column prop="direction" label="Direction" width="120" />
+            <el-table-column prop="raw" label="Raw" />
+          </el-table>
+        </el-row>
+      </div>
+      <div class="overlay" :style="pause ? 'display: block' : 'display: none'"></div>
+    </div>
     <el-row style="margin-top: 10px">
       <el-pagination background layout="prev, pager, next, total, jumper" :total="total" :page-size="PAGE_SIZE"
         v-model:current-page="current_page" @current-change="pageChage" />
@@ -170,6 +176,7 @@ async function pause_continue() {
         }}</el-button>
     </el-row>
   </div>
+
 
 
 </template>
@@ -185,5 +192,26 @@ async function pause_continue() {
   background-color: rgb(250, 250, 245);
   padding: 10px;
   margin-bottom: 10px;
+}
+
+.container {
+  position: relative;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  /* 黑色遮罩，半透明 */
+  pointer-events: none; /* 允许用户操作被遮罩的内容 */
+  z-index: 2;
 }
 </style>
