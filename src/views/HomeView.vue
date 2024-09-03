@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
 const serial_ports = ref([])
 const serial_name = ref('')
@@ -123,6 +123,81 @@ async function pause_continue() {
   }
 }
 
+const n_terminals = ref(1)
+const terminal_template = ref(JSON.stringify({
+  device_id: 1,
+  on: [
+    {
+      msg_type: "query",
+      ack: true,
+      delay_min: 50,
+      delay_max: 500,
+      delay_rand: false,
+      bad_crc: false
+    }
+  ]
+}))
+
+// 在popover中显示
+const beautiful_terminal_template = computed(() => {
+  const r = JSON.stringify(JSON.parse(terminal_template.value), null, 2)
+    .replace(/\n/g, '<br>') // 将换行符替换为 <br> 标签
+    .replace(/ /g, '&nbsp;'); // 将空格替换为 &nbsp;
+  console.log(r)
+  return r
+})
+
+// 在弹出对话框里编辑
+var terminal_template_for_edit = ref("")
+
+const dialogFormVisible = ref(false)
+
+function editTemplate() {
+  dialogFormVisible.value = true
+  terminal_template_for_edit.value = JSON.stringify(JSON.parse(terminal_template.value), null, 2)
+}
+
+function editTemplate_confirm() {
+  console.log("terminal_template_for_edit:", terminal_template_for_edit.value)
+  try {
+    JSON.parse(terminal_template_for_edit.value)
+  } catch (err) {
+    ElMessage.error(err.toString())
+    return
+  }
+
+  terminal_template.value = JSON.stringify(JSON.parse(terminal_template_for_edit.value))
+  dialogFormVisible.value = false
+
+}
+
+function add_terminals() {
+  var template = JSON.parse(terminal_template.value)
+  var { device_id } = tableTerminals.value.reduce((acc, cur) => {
+    return cur.device_id > acc.device_id ? cur : acc
+  }, template)
+  console.log("largest_id:", device_id)
+  
+  if(device_id > template.device_id) {
+    device_id++
+  }
+
+  for(var i = 0; i <  n_terminals.value; i++) {
+    template.device_id = device_id + i
+
+    tableTerminals.value.push({
+      device_id: device_id + i,
+      settings: JSON.stringify(template)
+    })
+  } 
+}
+
+function deleteTerminal(index) {
+  tableTerminals.value.splice(index, 1)
+}
+
+const tableTerminals = ref([])
+
 </script>
 
 <template>
@@ -152,6 +227,60 @@ async function pause_continue() {
     </el-row>
   </div>
 
+  <div class="terminals">
+    <el-row style="justify-content: center; padding-top: 10px; padding-bottom: 10px;font-size: 1.2em; color:blue">
+      <span>模拟终端</span>
+    </el-row>
+    <el-row>
+      <el-col>
+        数量
+        <el-input-number v-model="n_terminals" :min="1" :max="100" />
+
+        <el-popover effect="dark" placement="top-start" title="" :width="400" trigger="hover">
+          <div v-html="beautiful_terminal_template"></div>
+          <template #reference>
+            <span style="margin-left: 20px">
+              模板
+              <el-input v-model="terminal_template" style="width: 400px;" :rows="1" type="textarea" readonly
+                placeholder="Please input" />
+            </span>
+          </template>
+        </el-popover>
+
+        <el-button style="margin-left: 10px" plain @click="editTemplate">
+          编辑
+        </el-button>
+
+        <el-button type="primary" style="margin-left: 30px" @click="add_terminals">创建终端</el-button>
+      </el-col>
+
+      <el-dialog v-model="dialogFormVisible" title="编辑模板" width="500">
+        <el-input v-model="terminal_template_for_edit" :rows="20" type="textarea" />
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="dialogFormVisible = false">Cancel</el-button>
+            <el-button type="primary" @click="editTemplate_confirm">
+              Confirm
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+    </el-row>
+    <el-row>
+      <el-table :data="tableTerminals" style="width: 100%; margin-top: 10px" max-height="250">
+        <el-table-column prop="device_id" label="Device ID" width="120" />
+        <el-table-column prop="settings" label="Settings" />
+        <el-table-column fixed="right" label="Operations">
+          <template #default="scope">
+            <el-button @click="deleteTerminal(scope.$index)" link type="primary" size="small">Delete</el-button>
+            <el-button type="primary" size="small" @click="">Edit</el-button>
+            <el-button type="danger" size="small">Start</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-row>
+  </div>
 
   <div class="air_data">
     <el-row style="justify-content: center; padding-top: 10px; padding-bottom: 10px;font-size: 1.2em; color:blue">
@@ -176,9 +305,6 @@ async function pause_continue() {
         }}</el-button>
     </el-row>
   </div>
-
-
-
 </template>
 
 <style scoped>
@@ -211,7 +337,14 @@ async function pause_continue() {
   height: 100%;
   background: rgba(0, 0, 0, 0.2);
   /* 黑色遮罩，半透明 */
-  pointer-events: none; /* 允许用户操作被遮罩的内容 */
+  pointer-events: none;
+  /* 允许用户操作被遮罩的内容 */
   z-index: 2;
+}
+
+.terminals {
+  background-color: rgb(255, 255, 245);
+  padding: 10px;
+  margin-bottom: 10px;
 }
 </style>
