@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('electron', {
   listSerial: () => ipcRenderer.invoke('list_serial'),
   connectSerial: (params) => ipcRenderer.invoke('connect_serial', params),
   disconnetSerial: () => ipcRenderer.invoke('disconnect_serial'),
-  getPackages: (params) => ipcRenderer.invoke('get_packages', params)
+  getPackages: (params) => ipcRenderer.invoke('get_packages', params),
+  startTerminals: (params) => ipcRenderer.invoke('start_terminals', params),
+  stopTerminals: (deviceIDs) => ipcRenderer.invoke('stop_terminals', deviceIDs)
 });

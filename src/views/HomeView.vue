@@ -102,6 +102,41 @@ window.electron.ipcRenderer_on('serial:received', async (event /*, message*/) =>
 
 });
 
+window.electron.ipcRenderer_on('result:start-terminal', (event, message) => {
+  // message is an object likes:
+  // {
+  //   "device_id": 112,
+  //   "result": true,
+  //   "info": "terminal device_id 112 created OK"
+  // }
+  console.log('result:start-terminal', message)
+  for(let i of tableTerminals.value) {
+    if(i.device_id == message.device_id) {
+      i.run = message.result
+      if(message.result) {
+        ElMessage.success(message.info)
+      } else {
+        ElMessage.error(message.info)
+      }
+      break
+    }
+  }
+})
+
+window.electron.ipcRenderer_on('result:stop-terminal', (evnet, message) => {
+  for(let i of tableTerminals.value) {
+    if(i.device_id == message.device_id) {
+      i.run = !message.result
+      if(message.result) {
+        ElMessage.success(message.info)
+      } else {
+        ElMessage.error(message.info)
+      }
+      break
+    }
+  }
+})
+
 async function pageChage(page) {
   console.log("current page:", page)
   var r = await window.electron.getPackages({ page: page, pagesize: PAGE_SIZE })
@@ -152,51 +187,102 @@ var terminal_template_for_edit = ref("")
 
 const dialogFormVisible = ref(false)
 
-function editTemplate() {
+const editTitle = ref("编辑模板")
+
+var current_target = ""
+var current_index = -1
+function editTemplate(target, index) {
+  current_target = target
+  current_index = index
+  console.log("current_target, current_index:", current_target, current_index)
+
   dialogFormVisible.value = true
-  terminal_template_for_edit.value = JSON.stringify(JSON.parse(terminal_template.value), null, 2)
+  if (current_target == "template") {
+    editTitle.value = "编辑模板"
+    terminal_template_for_edit.value = JSON.stringify(JSON.parse(terminal_template.value), null, 2)
+  } else if (current_target == "instance") {
+    editTitle.value = "编辑实例 " + (index + 1) + "#"
+    terminal_template_for_edit.value = JSON.stringify(JSON.parse(tableTerminals.value[current_index].settings), null, 2)
+  }
+
 }
 
 function editTemplate_confirm() {
-  console.log("terminal_template_for_edit:", terminal_template_for_edit.value)
-  try {
-    JSON.parse(terminal_template_for_edit.value)
-  } catch (err) {
-    ElMessage.error(err.toString())
-    return
-  }
+  if (current_target == "template") {
+    try {
+      terminal_template.value = JSON.stringify(JSON.parse(terminal_template_for_edit.value))
+      current_target = ""
+      dialogFormVisible.value = false
+    } catch (err) {
+      ElMessage.error(err.toString())
+      return
+    }
+  } else if (current_target == "instance") {
+    try {
+      let object = JSON.parse(terminal_template_for_edit.value)
+      // check duplicate device id
+      for(let i = 0; i < tableTerminals.value.length; i++) {
+        if(i != current_index && object.device_id == tableTerminals.value[i].device_id) {
+          ElMessage.error("Device ID不能重复")
+          current_target = ""
+          return
+        }
+      }
 
-  terminal_template.value = JSON.stringify(JSON.parse(terminal_template_for_edit.value))
-  dialogFormVisible.value = false
+      tableTerminals.value[current_index].settings = JSON.stringify(JSON.parse(terminal_template_for_edit.value))
+
+      tableTerminals.value[current_index].device_id = JSON.parse(terminal_template_for_edit.value).device_id
+      current_target = ""
+      dialogFormVisible.value = false
+    } catch (err) {
+      ElMessage.error(err.toString())
+      return
+    }
+  }
 
 }
 
 function add_terminals() {
   var template = JSON.parse(terminal_template.value)
-  var { device_id } = tableTerminals.value.reduce((acc, cur) => {
-    return cur.device_id > acc.device_id ? cur : acc
-  }, template)
-  console.log("largest_id:", device_id)
-  
-  if(device_id > template.device_id) {
-    device_id++
+  var largest_device_id = tableTerminals.value.reduce((acc, cur) => {
+    return cur.device_id > acc ? cur.device_id : acc
+  }, -1)
+  var device_id = template.device_id
+  if (largest_device_id != -1) {
+    if (largest_device_id >= device_id) {
+      device_id = largest_device_id + 1
+    }
   }
-
-  for(var i = 0; i <  n_terminals.value; i++) {
+  for (var i = 0; i < n_terminals.value; i++) {
     template.device_id = device_id + i
 
     tableTerminals.value.push({
       device_id: device_id + i,
-      settings: JSON.stringify(template)
+      settings: JSON.stringify(template),
+      run: false // 终端是否在运行 
     })
-  } 
+  }
 }
 
 function deleteTerminal(index) {
   tableTerminals.value.splice(index, 1)
 }
 
+function StartOrStopTerminals(bStart, terminals) {
+  terminals = terminals.map((e) => JSON.parse(e))
+  console.log(bStart, terminals)
+  if(bStart) {
+    window.electron.startTerminals(terminals)
+  } else {
+    // stop them
+    window.electron.stopTerminals(terminals.map(e => e.device_id))
+  }
+  
+}
+
 const tableTerminals = ref([])
+
+
 
 </script>
 
@@ -247,14 +333,16 @@ const tableTerminals = ref([])
           </template>
         </el-popover>
 
-        <el-button style="margin-left: 10px" plain @click="editTemplate">
+        <el-button style="margin-left: 10px" plain @click="editTemplate('template')">
           编辑
         </el-button>
 
         <el-button type="primary" style="margin-left: 30px" @click="add_terminals">创建终端</el-button>
+        <el-button type="success" style="margin-left: 30px" @click="">Start All</el-button>
+        <el-button type="danger" style="margin-left: 30px" @click="">Stop All</el-button>
       </el-col>
 
-      <el-dialog v-model="dialogFormVisible" title="编辑模板" width="500">
+      <el-dialog v-model="dialogFormVisible" :title="editTitle" width="500">
         <el-input v-model="terminal_template_for_edit" :rows="20" type="textarea" />
         <template #footer>
           <div class="dialog-footer">
@@ -268,14 +356,15 @@ const tableTerminals = ref([])
 
     </el-row>
     <el-row>
-      <el-table :data="tableTerminals" style="width: 100%; margin-top: 10px" max-height="250">
+      <el-table stripe highlight-current-row :data="tableTerminals" style="width: 100%; margin-top: 10px" max-height="250">
+        <el-table-column type="index" label="序号" width="75" />
         <el-table-column prop="device_id" label="Device ID" width="120" />
         <el-table-column prop="settings" label="Settings" />
         <el-table-column fixed="right" label="Operations">
           <template #default="scope">
-            <el-button @click="deleteTerminal(scope.$index)" link type="primary" size="small">Delete</el-button>
-            <el-button type="primary" size="small" @click="">Edit</el-button>
-            <el-button type="danger" size="small">Start</el-button>
+            <el-button :disabled="scope.row.run" @click="deleteTerminal(scope.$index)" link type="primary" size="small">Delete</el-button>
+            <el-button :disabled="scope.row.run" type="primary" size="small" @click="editTemplate('instance', scope.$index)">Edit</el-button>
+            <el-button :type="scope.row.run ? 'danger' : 'success'" size="small" @click="StartOrStopTerminals(!scope.row.run, [scope.row.settings])">{{scope.row.run ? "Stop": "Start"}}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -289,7 +378,7 @@ const tableTerminals = ref([])
     <div class="container">
       <div class="content">
         <el-row>
-          <el-table :data="tableData" border style="width: 100%">
+          <el-table highlight-current-row :data="tableData" border style="width: 100%">
             <el-table-column prop="date" label="Date" width="200" />
             <el-table-column prop="direction" label="Direction" width="120" />
             <el-table-column prop="raw" label="Raw" />

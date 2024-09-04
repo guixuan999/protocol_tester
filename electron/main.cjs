@@ -38,6 +38,72 @@ function handleConnectSerial(event, params) {
   })
 }
 
+let terminalProcesses = {}
+function handleStartTerminals(event, params) {
+  // params likes
+  // [{
+  //   "device_id": 1,
+  //    "on": [
+  //      {
+  //        "msg_type": "query",
+  //        "ack": true,
+  //        "delay_min": 50,
+  //        "delay_max": 500,
+  //        "delay_rand": false,
+  //        "bad_crc": false
+  //      }
+  //    ]
+  // }]
+
+  //console.log("handleStartTerminals()", params)
+  for (let i of params) {
+    try {
+      if (i.device_id in terminalProcesses) {
+        // already existing...
+        mainWindow.webContents.send('result:start-terminal', {
+          device_id: i.device_id,
+          result: true,
+          info: `terminal device_id ${i.device_id} already exists`
+        })
+      } else {
+        let proc = fork(`${__dirname}/terminal/terminal_process.js`, [JSON.stringify(i)])
+        terminalProcesses[i.device_id] = proc
+        mainWindow.webContents.send('result:start-terminal', {
+          device_id: i.device_id,
+          result: true,
+          info: `terminal device_id ${i.device_id} created OK`
+        })
+      }
+    } catch (err) {
+      mainWindow.webContents.send('result:start-terminal', {
+        device_id: i.device_id,
+        result: false,
+        info: `terminal device_id ${i.device_id} creating failed: ${err.toString()}`
+      })
+    }
+  }
+}
+
+function handleStopTerminals(event, deviceIDs) {
+  for (let device_id of deviceIDs) {
+    if (device_id in terminalProcesses) {
+      terminalProcesses[device_id].kill()
+      delete terminalProcesses[device_id]
+      mainWindow.webContents.send('result:stop-terminal', {
+        device_id: device_id,
+        result: true,
+        info: `terminal device_id ${device_id} destroyed OK`
+      })
+    } else {
+      mainWindow.webContents.send('result:stop-terminal', {
+        device_id: device_id,
+        result: true,
+        info: `terminal device_id ${device_id} do not exist`
+      })
+    }
+  }
+}
+
 async function handleDisconnectSerial() {
   serial_process.kill()
   return new Promise((resolve, reject) => {
@@ -47,7 +113,7 @@ async function handleDisconnectSerial() {
 
 async function handleGetPackages(event, params) {
   console.log(params)
-  
+
   return new Promise((resolve, reject) => {
     resolve(queryRecords("packages", params));
   });
@@ -85,6 +151,8 @@ app.whenReady().then(() => {
   ipcMain.handle('connect_serial', handleConnectSerial)
   ipcMain.handle('disconnect_serial', handleDisconnectSerial)
   ipcMain.handle('get_packages', handleGetPackages)
+  ipcMain.handle('start_terminals', handleStartTerminals)
+  ipcMain.handle('stop_terminals', handleStopTerminals)
   createWindow()
 });
 
