@@ -110,10 +110,10 @@ window.electron.ipcRenderer_on('result:start-terminal', (event, message) => {
   //   "info": "terminal device_id 112 created OK"
   // }
   console.log('result:start-terminal', message)
-  for(let i of tableTerminals.value) {
-    if(i.device_id == message.device_id) {
+  for (let i of tableTerminals.value) {
+    if (i.device_id == message.device_id) {
       i.run = message.result
-      if(message.result) {
+      if (message.result) {
         ElMessage.success(message.info)
       } else {
         ElMessage.error(message.info)
@@ -124,10 +124,10 @@ window.electron.ipcRenderer_on('result:start-terminal', (event, message) => {
 })
 
 window.electron.ipcRenderer_on('result:stop-terminal', (evnet, message) => {
-  for(let i of tableTerminals.value) {
-    if(i.device_id == message.device_id) {
+  for (let i of tableTerminals.value) {
+    if (i.device_id == message.device_id) {
       i.run = !message.result
-      if(message.result) {
+      if (message.result) {
         ElMessage.success(message.info)
       } else {
         ElMessage.error(message.info)
@@ -221,8 +221,8 @@ function editTemplate_confirm() {
     try {
       let object = JSON.parse(terminal_template_for_edit.value)
       // check duplicate device id
-      for(let i = 0; i < tableTerminals.value.length; i++) {
-        if(i != current_index && object.device_id == tableTerminals.value[i].device_id) {
+      for (let i = 0; i < tableTerminals.value.length; i++) {
+        if (i != current_index && object.device_id == tableTerminals.value[i].device_id) {
           ElMessage.error("Device ID不能重复")
           current_target = ""
           return
@@ -230,7 +230,6 @@ function editTemplate_confirm() {
       }
 
       tableTerminals.value[current_index].settings = JSON.stringify(JSON.parse(terminal_template_for_edit.value))
-
       tableTerminals.value[current_index].device_id = JSON.parse(terminal_template_for_edit.value).device_id
       current_target = ""
       dialogFormVisible.value = false
@@ -271,13 +270,12 @@ function deleteTerminal(index) {
 function StartOrStopTerminals(bStart, terminals) {
   terminals = terminals.map((e) => JSON.parse(e))
   console.log(bStart, terminals)
-  if(bStart) {
+  if (bStart) {
     window.electron.startTerminals(terminals)
   } else {
     // stop them
     window.electron.stopTerminals(terminals.map(e => e.device_id))
   }
-  
 }
 
 const tableTerminals = ref([])
@@ -307,7 +305,7 @@ const tableTerminals = ref([])
         </el-select>
         <el-button :type="serial_state == 'connected' ? 'danger' : 'primary'" :disabled="serial_ui_disable"
           @click="connect_serial">{{ serial_state == "connected" ?
-        "Disconnect" : "Connect" }}</el-button>
+            "Disconnect" : "Connect" }}</el-button>
         <span style="margin-left: 10px">{{ serial_state }}</span>
       </el-col>
     </el-row>
@@ -341,34 +339,39 @@ const tableTerminals = ref([])
         <el-button type="success" style="margin-left: 30px" @click="">Start All</el-button>
         <el-button type="danger" style="margin-left: 30px" @click="">Stop All</el-button>
       </el-col>
-
-      <el-dialog v-model="dialogFormVisible" :title="editTitle" width="500">
-        <el-input v-model="terminal_template_for_edit" :rows="20" type="textarea" />
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="dialogFormVisible = false">Cancel</el-button>
-            <el-button type="primary" @click="editTemplate_confirm">
-              Confirm
-            </el-button>
-          </div>
-        </template>
-      </el-dialog>
-
     </el-row>
     <el-row>
-      <el-table stripe highlight-current-row :data="tableTerminals" style="width: 100%; margin-top: 10px" max-height="250">
+      <el-table stripe highlight-current-row :data="tableTerminals" style="width: 100%; margin-top: 10px"
+        max-height="250">
         <el-table-column type="index" label="序号" width="75" />
         <el-table-column prop="device_id" label="Device ID" width="120" />
         <el-table-column prop="settings" label="Settings" />
         <el-table-column fixed="right" label="Operations">
           <template #default="scope">
-            <el-button :disabled="scope.row.run" @click="deleteTerminal(scope.$index)" link type="primary" size="small">Delete</el-button>
-            <el-button :disabled="scope.row.run" type="primary" size="small" @click="editTemplate('instance', scope.$index)">Edit</el-button>
-            <el-button :type="scope.row.run ? 'danger' : 'success'" size="small" @click="StartOrStopTerminals(!scope.row.run, [scope.row.settings])">{{scope.row.run ? "Stop": "Start"}}</el-button>
+            <el-button :disabled="scope.row.run" @click="deleteTerminal(scope.$index)" link type="primary"
+              size="small">Delete</el-button>
+            <el-button :disabled="scope.row.run" type="primary" size="small"
+              @click="editTemplate('instance', scope.$index)">Edit</el-button>
+            <el-button :type="scope.row.run ? 'danger' : 'success'" size="small"
+              @click="StartOrStopTerminals(!scope.row.run, [scope.row.settings])">{{ scope.row.run ? "Stop" :
+              "Start"}}</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-row>
+
+    <!-- 注意el-dialog是脱离了正常的文档流的，因此把它放在哪儿都行-->
+    <el-dialog :close-on-click-modal="false" v-model="dialogFormVisible" :title="editTitle" width="500">
+      <el-input v-model="terminal_template_for_edit" :rows="20" type="textarea" />
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="dialogFormVisible = false">Cancel</el-button>
+          <el-button type="primary" @click="editTemplate_confirm">
+            Confirm
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 
   <div class="air_data">
