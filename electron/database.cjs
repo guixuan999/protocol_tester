@@ -94,7 +94,17 @@ function initDatabase() {
             process.exit(1);
         }
         console.log('Connected to the SQLite database.');
-        createTableIfNotExists('packages', { date: "text", direction: "text", raw: "text" })
+        createTableIfNotExists('packages', { 
+            date: "text", 
+            direction: "text", 
+            raw: "text",
+            bad: "integer",
+            info: "text",
+            cmd: "text",
+            device_id: "integer",
+            short_addr: "integer",
+            frame_seq: "integer" 
+        })
 
     });
 }

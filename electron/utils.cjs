@@ -13,4 +13,25 @@ function get_now_str() {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
 }
 
-module.exports = get_now_str
+function crc16(buffer) {
+    let crc = 0xFFFF; // 初始值，可以根据需求更改
+    const polynomial = 0x18005; // 二进制 1,1000,0000,0000,0101 对应多项式 x^16+x^15+x^2+1
+
+    for (let i = 0; i < buffer.length; i++) {
+        crc ^= (buffer[i] << 8); // 把当前字节移到高位
+        
+        for (let j = 0; j < 8; j++) {
+            if (crc & 0x8000) { // 判断最高位是否为1
+                crc = (crc << 1) ^ polynomial; // 移位并异或多项式
+            } else {
+                crc <<= 1; // 直接移位
+            }
+            crc &= 0xFFFF; // 保持16位
+        }
+    }
+
+    return crc;
+}
+
+
+module.exports = {get_now_str, crc16}

@@ -68,7 +68,6 @@ onMounted(async () => {
 })
 
 window.electron.ipcRenderer_on('result:serial-connect', (event, message) => {
-  console.log('Message from main process:', message);
   if (message.result) {
     serial_state.value = "connected"
     ElMessage.success(message.info)
@@ -82,7 +81,6 @@ window.electron.ipcRenderer_on('result:serial-connect', (event, message) => {
 
 let pending_refreshing = false // this is for "don't access database too frequently"
 window.electron.ipcRenderer_on('serial:received', async (event /*, message*/) => {
-  console.log('a package received on serial');
   if (pause.value) {
     pending_refreshing = true
     return;
@@ -92,7 +90,6 @@ window.electron.ipcRenderer_on('serial:received', async (event /*, message*/) =>
     pending_refreshing = true
     setTimeout(async () => {
       var r = await window.electron.getPackages({ page: 1, pagesize: PAGE_SIZE })
-      console.log(r)
       tableData.value = r.rows // r likes {total: N, rows: [...]}
       total.value = r.total
       current_page.value = 1
@@ -109,7 +106,6 @@ window.electron.ipcRenderer_on('result:start-terminal', (event, message) => {
   //   "result": true,
   //   "info": "terminal device_id 112 created OK"
   // }
-  console.log('result:start-terminal', message)
   for (let i of tableTerminals.value) {
     if (i.device_id == message.device_id) {
       i.run = message.result
@@ -138,9 +134,7 @@ window.electron.ipcRenderer_on('result:stop-terminal', (evnet, message) => {
 })
 
 async function pageChage(page) {
-  console.log("current page:", page)
   var r = await window.electron.getPackages({ page: page, pagesize: PAGE_SIZE })
-  console.log(r)
   tableData.value = r.rows // r likes {total: N, rows: [...]}
   total.value = r.total
 }
@@ -175,11 +169,9 @@ const terminal_template = ref(JSON.stringify({
 
 // 在popover中显示
 const beautiful_terminal_template = computed(() => {
-  const r = JSON.stringify(JSON.parse(terminal_template.value), null, 2)
+  return JSON.stringify(JSON.parse(terminal_template.value), null, 2)
     .replace(/\n/g, '<br>') // 将换行符替换为 <br> 标签
     .replace(/ /g, '&nbsp;'); // 将空格替换为 &nbsp;
-  console.log(r)
-  return r
 })
 
 // 在弹出对话框里编辑
@@ -194,7 +186,6 @@ var current_index = -1
 function editTemplate(target, index) {
   current_target = target
   current_index = index
-  console.log("current_target, current_index:", current_target, current_index)
 
   dialogFormVisible.value = true
   if (current_target == "template") {
@@ -278,9 +269,14 @@ function StartOrStopTerminals(bStart, terminals) {
   }
 }
 
+function tableRowClassName({row}) {
+  if(row.bad) {
+    return "bad-class"
+  }
+  return ""
+}
+
 const tableTerminals = ref([])
-
-
 
 </script>
 
@@ -381,9 +377,19 @@ const tableTerminals = ref([])
     <div class="container">
       <div class="content">
         <el-row>
-          <el-table highlight-current-row :data="tableData" border style="width: 100%">
+          <el-table
+              highlight-current-row
+              :data="tableData"
+              :row-class-name="tableRowClassName" 
+              border style="width: 100%">
             <el-table-column prop="date" label="Date" width="200" />
             <el-table-column prop="direction" label="Direction" width="120" />
+            <el-table-column prop="bad" label="Bad" width="120" />
+            <el-table-column prop="info" label="Info" width="120" />
+            <el-table-column prop="cmd" label="CMD" width="120" />
+            <el-table-column prop="device_id" label="Device ID" width="120" />
+            <el-table-column prop="short_addr" label="Short Addr" width="120" />
+            <el-table-column prop="frame_seq" label="Frame Seq" width="120" />
             <el-table-column prop="raw" label="Raw" />
           </el-table>
         </el-row>
@@ -438,5 +444,11 @@ const tableTerminals = ref([])
   background-color: rgb(255, 255, 245);
   padding: 10px;
   margin-bottom: 10px;
+}
+
+/* 注意：深度选择器（>>>、/deep/、::v-deep）并不是 CSS3 标准的一部分，
+而是 Vue 以及其他前端框架（如 Web Components 或 Shadow DOM）中为了支持样式作用域隔离而引入的特殊语法。 */
+.el-table >>> .bad-class {
+  background-color: rgb(237, 180, 180);
 }
 </style>

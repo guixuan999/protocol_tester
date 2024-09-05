@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
-const get_now_str = require('./utils.cjs')
+const { get_now_str, crc16 } = require('./utils.cjs')
 const { initDatabase, insertRecord, queryRecords } = require("./database.cjs")
 
 const NODE_ENV = process.env.NODE_ENV;
@@ -23,12 +23,14 @@ function handleConnectSerial(event, params) {
         mainWindow.webContents.send('result:serial-connect', message)
         break
       case "in":
-        message.date = get_now_str()
-        message.direction = "IN"
+        // see radio_process.js: from process.send(), message.raw transformed to an object like: { type: 'Buffer', data: [ 18, 52, 86, 120 ] }
+        var buffer = Buffer.from(message.raw.data)
+        let parsedMsg = parseIncommingPackage(buffer)
+        console.log("parseIncommingPackage()", parsedMsg)
+
         // inform rendering process a package is received
         mainWindow.webContents.send('serial:received'/*, message*/)
-        delete message.code  // table 'packages' in database has no field 'code'
-        insertRecord("packages", message)
+        insertRecord("packages", parsedMsg)
         break
     }
 
@@ -168,3 +170,62 @@ app.on('activate', () => {
   }
 });
 
+
+const DOWNLINK_CMD = {
+  0x10: "Down",
+  0x20: "Ack",
+  0x30: "Query",
+  0x50: "RegAccept",
+  0x60: "RequireReg"
+}
+
+function parseIncommingPackage(buffer) {
+  // 将 Buffer 转换为十六进制字符串
+  const hexString = buffer.toString("hex");
+  // 将十六进制字符串格式化为目标格式
+  const formattedString = `Byte[${hexString.length / 2}]=> [ ${hexString.match(/.{1,2}/g).join(' ')} ]`;
+
+  result = {
+    date: get_now_str(),
+    direction: "IN",
+    raw: formattedString,
+    bad: false,
+    info: "",
+  }
+
+  // check length
+  if (buffer.length < (6 + 2)) { // at least 6-byte leading plus 2-byte CRC
+    result.bad = true
+    result.info = "bad length"
+    return result
+  }
+
+  // check CRC
+  const crc = (buffer[buffer.length - 2] << 8) + buffer[buffer.length - 1]
+  const calculated_crc = crc16(buffer.slice(0, buffer.length - 2))
+  if (crc != calculated_crc) {
+    result.bad = true
+    result.info = "bad CRC"
+    return result
+  }
+
+  // check cmd
+  let cmd = buffer[0]
+  if (!(cmd in DOWNLINK_CMD)) {
+    result.bad = true
+    result.info = "bad cmd"
+    return result
+  }
+  result.cmd = DOWNLINK_CMD[cmd]
+
+  // parse device_id or short_addr, and frame_seq
+  if (result.cmd == "Query" || result.cmd == "RegAccept") {
+    result.device_id = (buffer[1] << 24) + (buffer[2] << 16) + (buffer[3] << 8) + buffer[4]
+    result.frame_seq = buffer[5]
+  } else {
+    result.short_addr = (buffer[1] << 8) + buffer[2]
+    result.frame_seq = buffer[3]
+  }
+
+  return result
+}
