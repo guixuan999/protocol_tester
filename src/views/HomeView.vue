@@ -258,15 +258,28 @@ function deleteTerminal(index) {
   tableTerminals.value.splice(index, 1)
 }
 
-function StartOrStopTerminals(bStart, terminals) {
-  terminals = terminals.map((e) => JSON.parse(e))
-  console.log(bStart, terminals)
+function StartOrStopTerminal(bStart, terminal) {
+  terminal = JSON.parse(terminal)
   if (bStart) {
-    window.electron.startTerminals(terminals)
+    window.electron.startTerminals([terminal])
   } else {
     // stop them
-    window.electron.stopTerminals(terminals.map(e => e.device_id))
+    window.electron.stopTerminals([terminal.device_id])
   }
+}
+
+// start all stopped terminals
+function startAll() {
+  let stopped_terminals = tableTerminals.value.filter(e => !e.run)
+  stopped_terminals = stopped_terminals.map(e => JSON.parse(e.settings))
+  window.electron.startTerminals(stopped_terminals)
+}
+
+// stop all started terminals
+function stopAll() {
+  let started_terminals = tableTerminals.value.filter(e => e.run)
+  started_terminals = started_terminals.map(e => JSON.parse(e.settings).device_id)
+  window.electron.stopTerminals(started_terminals)
 }
 
 function tableRowClassName({row}) {
@@ -332,8 +345,8 @@ const tableTerminals = ref([])
         </el-button>
 
         <el-button type="primary" style="margin-left: 30px" @click="add_terminals">创建终端</el-button>
-        <el-button type="success" style="margin-left: 30px" @click="">Start All</el-button>
-        <el-button type="danger" style="margin-left: 30px" @click="">Stop All</el-button>
+        <el-button type="success" style="margin-left: 30px" @click="startAll">Start All</el-button>
+        <el-button type="danger" style="margin-left: 30px" @click="stopAll">Stop All</el-button>
       </el-col>
     </el-row>
     <el-row>
@@ -349,7 +362,7 @@ const tableTerminals = ref([])
             <el-button :disabled="scope.row.run" type="primary" size="small"
               @click="editTemplate('instance', scope.$index)">Edit</el-button>
             <el-button :type="scope.row.run ? 'danger' : 'success'" size="small"
-              @click="StartOrStopTerminals(!scope.row.run, [scope.row.settings])">{{ scope.row.run ? "Stop" :
+              @click="StartOrStopTerminal(!scope.row.run, scope.row.settings)">{{ scope.row.run ? "Stop" :
               "Start"}}</el-button>
           </template>
         </el-table-column>

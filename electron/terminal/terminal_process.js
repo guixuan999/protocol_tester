@@ -1,6 +1,4 @@
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+import {sleep} from '../utils.cjs'
 
 let settings = JSON.parse(process.argv[2])
 

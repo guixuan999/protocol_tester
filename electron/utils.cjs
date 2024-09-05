@@ -1,4 +1,8 @@
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function get_now_str() {
     const now = new Date();
 
@@ -34,4 +38,4 @@ function crc16(buffer) {
 }
 
 
-module.exports = {get_now_str, crc16}
+module.exports = {get_now_str, crc16, sleep}

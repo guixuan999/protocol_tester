@@ -1,8 +1,5 @@
 import SerialRadio from './serial_radio.js'
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+import {sleep} from '../utils.cjs'
 
 const radio = new SerialRadio(JSON.parse(process.argv[2]))
 
