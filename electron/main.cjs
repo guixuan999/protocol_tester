@@ -4,6 +4,7 @@ const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
 const { get_now_str, crc16 } = require('./utils.cjs')
 const { initDatabase, insertRecord, queryRecords } = require("./database.cjs")
+const { MacFrame } = require("./terminal/mac_frames.cjs")
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -34,6 +35,7 @@ function handleConnectSerial(event, params) {
 
         // broadcast to termial processes
         parsedMsg.raw = buffer // change from string to Buffer for terminal process
+        console.log("XXXXX", MacFrame.from(buffer))
         Object.entries(terminalProcesses).forEach(([deviceId, proc]) => {
           proc.send({
             type: "RF_IN",

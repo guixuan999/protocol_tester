@@ -1,3 +1,5 @@
+import { MacFrame } from "./mac_frames.cjs"
+
 let settings = JSON.parse(process.argv[2])
 let gateway_token
 let short_addr
@@ -36,11 +38,13 @@ process.on("message", (message) => {
     if(message.type == "RF_IN") {
         if(message.data.bad) {
             console.log("bad RF in package, discard...")
-        } else if((message.data.device_id != settings.device_id) ||
+        } else if(((message.data.device_id != settings.device_id) && (message.data.device_id != -1)) ||
                   (message.data.short_addr != short_addr)) {
             console.log(`RF in package not for me(device_id ${settings.device_id}), discard...`)
         } else {
             console.log(`RF in package for me(device_id ${settings.device_id}), parsing...`)
+            let frame = MacFrame.from(Buffer.from(message.data.raw.data))
+            console.log(frame)
         } 
     }
 })

@@ -37,5 +37,11 @@ function crc16(buffer) {
     return crc;
 }
 
+const isEmptyObject = (obj) => {
+    if(obj == null) return true
+    if(typeof obj != 'object') return true
+    return Object.keys(obj).length === 0;
+};
+  
 
-module.exports = {get_now_str, crc16, sleep}
+module.exports = {get_now_str, crc16, sleep, isEmptyObject}
