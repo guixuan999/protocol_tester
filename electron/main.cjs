@@ -26,22 +26,24 @@ function handleConnectSerial(event, params) {
       case "in":
         // see radio_process.js: from process.send(), message.raw transformed to an object like: { type: 'Buffer', data: [ 18, 52, 86, 120 ] }
         var buffer = Buffer.from(message.raw.data)
-        let parsedMsg = parseIncommingPackage(buffer)
-        console.log("parseIncommingPackage()", parsedMsg)
-        
-        insertRecord("packages", parsedMsg)
+        let frame = MacFrame.from(buffer)
+        let record = convert2record("IN", frame, buffer)
+        console.log("record", record)
+
+        insertRecord("packages", record)
         // inform rendering process a package is received
         mainWindow.webContents.send('serial:received'/*, message*/)
 
-        // broadcast to termial processes
-        parsedMsg.raw = buffer // change from string to Buffer for terminal process
-        console.log("XXXXX", MacFrame.from(buffer))
-        Object.entries(terminalProcesses).forEach(([deviceId, proc]) => {
-          proc.send({
-            type: "RF_IN",
-            data: parsedMsg
+        // broadcast to termial process, but no need for bad frame
+        if(!record.bad) {
+          Object.entries(terminalProcesses).forEach(([deviceId, proc]) => {
+            proc.send({
+              type: "RF_IN",
+              data: frame
+            })
           })
-        })
+        }
+        
         break
     }
 
@@ -183,61 +185,31 @@ app.on('activate', () => {
 });
 
 
-const DOWNLINK_CMD = {
+const CMD_NAME_MAP = {
+  0x00: "Up",
   0x10: "Down",
   0x20: "Ack",
   0x30: "Query",
+  0x40: "RegRequest",
   0x50: "RegAccept",
   0x60: "RequireReg"
 }
 
-function parseIncommingPackage(buffer) {
+function convert2record(direction, frame, buffer) {
   // 将 Buffer 转换为十六进制字符串
   const hexString = buffer.toString("hex");
   // 将十六进制字符串格式化为目标格式
   const formattedString = `Byte[${hexString.length / 2}]=> [ ${hexString.match(/.{1,2}/g).join(' ')} ]`;
 
-  result = {
+  return {
     date: get_now_str(),
-    direction: "IN",
+    direction: direction,
     raw: formattedString,
-    bad: false,
-    info: "",
+    bad: frame.bad,
+    info: frame.info,
+    cmd: CMD_NAME_MAP[frame.cmd],
+    device_id: frame.device_id,
+    short_addr: frame.short_addr,
+    frame_seq: frame.frame_seq
   }
-
-  // check length
-  if (buffer.length < (6 + 2)) { // at least 6-byte leading plus 2-byte CRC
-    result.bad = true
-    result.info = "bad length"
-    return result
-  }
-
-  // check CRC
-  const crc = (buffer[buffer.length - 2] << 8) + buffer[buffer.length - 1]
-  const calculated_crc = crc16(buffer.slice(0, buffer.length - 2))
-  if (crc != calculated_crc) {
-    result.bad = true
-    result.info = "bad CRC"
-    return result
-  }
-
-  // check cmd
-  let cmd = buffer[0]
-  if (!(cmd in DOWNLINK_CMD)) {
-    result.bad = true
-    result.info = "bad cmd"
-    return result
-  }
-  result.cmd = DOWNLINK_CMD[cmd]
-
-  // parse device_id or short_addr, and frame_seq
-  if (result.cmd == "Query" || result.cmd == "RegAccept") {
-    result.device_id = (buffer[1] << 24) + (buffer[2] << 16) + (buffer[3] << 8) + buffer[4]
-    result.frame_seq = buffer[5]
-  } else {
-    result.short_addr = (buffer[1] << 8) + buffer[2]
-    result.frame_seq = buffer[3]
-  }
-
-  return result
 }

@@ -29,7 +29,8 @@ class MacFrameQuery {
             // check if broadcast addr
             if(BufferOrCmd.readUInt32BE(1) != 0xFFFFFFFF) {
                 this.bad = true
-                this.info = "device_id should be broadcast address"
+                this.cmd = BufferOrCmd[0]
+                this.info = "bad Device ID"
                 return
             }
 

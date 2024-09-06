@@ -7,16 +7,7 @@ let short_addr
 console.log(`terminal process created! device_id=${settings.device_id}`)
 
 process.on("message", (message) => {
-    // message.data.raw: A Buffer object (like  <Buffer 50 74 32 00 88 9a cc dd 81 6b> ) send() from main proces will transformed to an object like:
-    // {
-    //     type: 'Buffer',
-    //     data: [
-    //             80, 116,  50,   0,
-    //             136, 154, 204, 221,
-    //             129, 107
-    //     ]
-    // }
-    console.log(`terminal with device_id ${settings.device_id} message in:`,  message.type, message.data)
+    console.log(`terminal with device_id ${settings.device_id} message in:`, message)
     // message.data looks like:
     // {
     //     date: '2024-09-06 11:09:29.634',
@@ -36,15 +27,13 @@ process.on("message", (message) => {
     //     frame_seq: 154
     // }
     if(message.type == "RF_IN") {
-        if(message.data.bad) {
+        let frame = message.data
+        if(frame.bad) {
             console.log("bad RF in package, discard...")
-        } else if(((message.data.device_id != settings.device_id) && (message.data.device_id != -1)) ||
-                  (message.data.short_addr != short_addr)) {
+        } else if((frame.device_id != settings.device_id) && (frame.device_id != 0xFFFFFFFF)) {
             console.log(`RF in package not for me(device_id ${settings.device_id}), discard...`)
         } else {
-            console.log(`RF in package for me(device_id ${settings.device_id}), parsing...`)
-            let frame = MacFrame.from(Buffer.from(message.data.raw.data))
-            console.log(frame)
+            console.log(`RF in package for me(device_id ${settings.device_id}), processing...`)
         } 
     }
 })
