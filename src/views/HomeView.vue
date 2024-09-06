@@ -268,6 +268,14 @@ function StartOrStopTerminal(bStart, terminal) {
   }
 }
 
+const startAllDisabled = computed(() => {
+  return tableTerminals.value.reduce((acc, cur) => acc && cur.run, true)
+})
+
+const stopAllDisabled = computed(() => {
+  return tableTerminals.value.reduce((acc, cur) => acc && !cur.run, true)
+})
+
 // start all stopped terminals
 function startAll() {
   let stopped_terminals = tableTerminals.value.filter(e => !e.run)
@@ -345,8 +353,8 @@ const tableTerminals = ref([])
         </el-button>
 
         <el-button type="primary" style="margin-left: 30px" @click="add_terminals">创建终端</el-button>
-        <el-button type="success" style="margin-left: 30px" @click="startAll">Start All</el-button>
-        <el-button type="danger" style="margin-left: 30px" @click="stopAll">Stop All</el-button>
+        <el-button type="success" style="margin-left: 30px" :disabled="startAllDisabled" @click="startAll">Start All</el-button>
+        <el-button type="danger" style="margin-left: 30px" :disabled="stopAllDisabled" @click="stopAll">Stop All</el-button>
       </el-col>
     </el-row>
     <el-row>

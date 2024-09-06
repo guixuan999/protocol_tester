@@ -27,10 +27,19 @@ function handleConnectSerial(event, params) {
         var buffer = Buffer.from(message.raw.data)
         let parsedMsg = parseIncommingPackage(buffer)
         console.log("parseIncommingPackage()", parsedMsg)
-
+        
+        insertRecord("packages", parsedMsg)
         // inform rendering process a package is received
         mainWindow.webContents.send('serial:received'/*, message*/)
-        insertRecord("packages", parsedMsg)
+
+        // broadcast to termial processes
+        parsedMsg.raw = buffer // change from string to Buffer for terminal process
+        Object.entries(terminalProcesses).forEach(([deviceId, proc]) => {
+          proc.send({
+            type: "RF_IN",
+            data: parsedMsg
+          })
+        })
         break
     }
 
@@ -40,7 +49,8 @@ function handleConnectSerial(event, params) {
   })
 }
 
-let terminalProcesses = {}
+let terminalProcesses = {} // like {DEVICE_ID1: proc1, DEVICE_ID2: proc2, ...}
+let shortAddr_deviceId_map = {} // like {SHORT_ADDR1: DEVICE_ID1, SHORT_ADDR2: DEVICE_ID2, ... }
 function handleStartTerminals(event, params) {
   // params likes
   // [{
