@@ -3,9 +3,14 @@
 # CRC16 结果: 816B
 
 import crcmod, re, sys
+import binascii
 
 # 要计算 CRC 的数据，必须是字节串
-data = bytes.fromhex(re.sub(r'\s+', '', sys.argv[1]))
+try:
+    data = bytes.fromhex(re.sub(r'\s+', '', sys.argv[1]))
+except Exception as e: 
+    print("Error!!! ", e)
+    exit(0)
 
 # 定义多项式，多项式应包含最高位的 x^16 项
 # 对于多项式 x^16 + x^5 + x^2 + 1，其二进制表示为 1 0000 0000 0010 0101（共17位）
@@ -26,4 +31,13 @@ crc16_func = crcmod.mkCrcFun(poly=polynomial, initCrc=0xFFFF, rev=False, xorOut=
 # 计算 CRC 值
 crc_result = crc16_func(data)
 
-print('CRC16 结果: {:04X}'.format(crc_result))  # 以 16 进制格式输出
+hex_string = binascii.hexlify(data).decode('ascii')
+formatted_string = f"{' '.join(hex_string[i:i+2] for i in range(0, len(hex_string), 2))}"
+print('CRC16([ {:s} ]) = {:04X}'.format(formatted_string, crc_result))  # 以 16 进制格式输出
+
+crc_result_string = '{:04X}'.format(crc_result)
+crc_result_string = f"{' '.join(crc_result_string[i:i+2] for i in range(0, len(crc_result_string), 2))}"
+formatted_string = ' '.join([formatted_string, crc_result_string])
+
+print("raw plus crc16 --->")
+print(formatted_string)
