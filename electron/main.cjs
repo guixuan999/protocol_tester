@@ -4,7 +4,7 @@ const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
 const { get_now_str, crc16 } = require('./utils.cjs')
 const { initDatabase, insertRecord, queryRecords } = require("./database.cjs")
-const { MacFrame } = require("./terminal/mac_frames.cjs")
+const { CMD_NAME_MAP, MacFrame, MacFrameRegRequest } = require("./terminal/mac_frames.cjs");
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -34,8 +34,13 @@ function handleConnectSerial(event, params) {
         // inform rendering process a package is received
         mainWindow.webContents.send('serial:received'/*, message*/)
 
+        // update gateway_token
+        if ((frame.cmd == MacFrame.CMD_Query) && (gateway_token === undefined)) {
+          gateway_token = frame.gateway_token
+        }
+
         // broadcast to termial process, but no need for bad frame
-        if(!record.bad) {
+        if (!record.bad) {
           Object.entries(terminalProcesses).forEach(([deviceId, proc]) => {
             proc.send({
               type: "RF_IN",
@@ -43,7 +48,7 @@ function handleConnectSerial(event, params) {
             })
           })
         }
-        
+
         break
     }
 
@@ -55,6 +60,7 @@ function handleConnectSerial(event, params) {
 
 let terminalProcesses = {} // like {DEVICE_ID1: proc1, DEVICE_ID2: proc2, ...}
 let shortAddr_deviceId_map = {} // like {SHORT_ADDR1: DEVICE_ID1, SHORT_ADDR2: DEVICE_ID2, ... }
+let gateway_token
 function handleStartTerminals(event, params) {
   // params likes
   // [{
@@ -88,6 +94,33 @@ function handleStartTerminals(event, params) {
           device_id: i.device_id,
           result: true,
           info: `terminal device_id ${i.device_id} created OK`
+        })
+        proc.on("message", message => {
+          console.log(`message from terminal process[dev ${i.device_id}]: `, message)
+          if (message.type == "RF_OUT") {
+            switch (message.data.cmd) {
+              case MacFrame.CMD_RegRequest:
+                Object.setPrototypeOf(message.data, MacFrameRegRequest.prototype)
+                break
+            }
+
+            let buffer = message.data.pack(gateway_token, message.bad_crc)
+
+            let record = convert2record("OUT", message.data, buffer, message.bad_crc)
+            console.log("record", record)
+
+            insertRecord("packages", record)
+            // inform rendering process a package will be sent
+            mainWindow.webContents.send('serial:received'/*, message*/)
+
+            // send to serial process
+            serial_process.send({
+              type: message.type,
+              data: buffer
+            })
+          }
+
+
         })
       }
     } catch (err) {
@@ -185,21 +218,16 @@ app.on('activate', () => {
 });
 
 
-const CMD_NAME_MAP = {
-  0x00: "Up",
-  0x10: "Down",
-  0x20: "Ack",
-  0x30: "Query",
-  0x40: "RegRequest",
-  0x50: "RegAccept",
-  0x60: "RequireReg"
-}
-
-function convert2record(direction, frame, buffer) {
+function convert2record(direction, frame, buffer, bad_crc) {
   // 将 Buffer 转换为十六进制字符串
   const hexString = buffer.toString("hex");
   // 将十六进制字符串格式化为目标格式
   const formattedString = `Byte[${hexString.length / 2}]=> [ ${hexString.match(/.{1,2}/g).join(' ')} ]`;
+
+  if(bad_crc) {
+    frame.bad = true,
+    frame.info = "bad crc"
+  }
 
   return {
     date: get_now_str(),

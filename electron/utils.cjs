@@ -23,7 +23,7 @@ function crc16(buffer) {
 
     for (let i = 0; i < buffer.length; i++) {
         crc ^= (buffer[i] << 8); // 把当前字节移到高位
-        
+
         for (let j = 0; j < 8; j++) {
             if (crc & 0x8000) { // 判断最高位是否为1
                 crc = (crc << 1) ^ polynomial; // 移位并异或多项式
@@ -38,10 +38,13 @@ function crc16(buffer) {
 }
 
 const isEmptyObject = (obj) => {
-    if(obj == null) return true
-    if(typeof obj != 'object') return true
+    if (obj == null) return true
+    if (typeof obj != 'object') return true
     return Object.keys(obj).length === 0;
 };
-  
 
-module.exports = {get_now_str, crc16, sleep, isEmptyObject}
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+module.exports = { get_now_str, crc16, sleep, isEmptyObject, getRandomInt }
