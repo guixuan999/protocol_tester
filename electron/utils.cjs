@@ -47,4 +47,20 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-module.exports = { get_now_str, crc16, sleep, isEmptyObject, getRandomInt }
+function appendToBuffer(originalBuffer, dataToAppend) {
+    // 确保 dataToAppend 是一个 Buffer
+    const appendBuffer = Buffer.isBuffer(dataToAppend) ? dataToAppend : Buffer.from(dataToAppend);
+
+    // 创建一个新的 Buffer，大小是原始 Buffer 和要追加的数据的总和
+    const newBuffer = Buffer.alloc(originalBuffer.length + appendBuffer.length);
+
+    // 将原始 Buffer 内容复制到新 Buffer 中
+    originalBuffer.copy(newBuffer, 0);
+
+    // 将新数据追加到新 Buffer 中
+    appendBuffer.copy(newBuffer, originalBuffer.length);
+
+    return newBuffer;
+}
+
+module.exports = { get_now_str, crc16, sleep, isEmptyObject, getRandomInt, appendToBuffer }

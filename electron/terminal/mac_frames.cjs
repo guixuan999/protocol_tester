@@ -1,4 +1,4 @@
-const { crc16, getRandomInt } = require('../utils.cjs')
+const { crc16, getRandomInt, appendToBuffer } = require('../utils.cjs')
 
 class MacFrameQuery {
     constructor(BufferOrCmd) {
@@ -88,7 +88,7 @@ class MacFrameRegRequest {
 }
 
 class MacFrameRegAccept {
-    constructor(BufferOrCmd) {
+    constructor(BufferOrCmd, gwToken) {
         this.bad = false  // indicate if this is a bad one
         this.info = "" // indicate the information for bad one
 
@@ -104,9 +104,17 @@ class MacFrameRegAccept {
                 this.info = "bad length"
                 return
             }
-            // check CRC, for Query, gateway_token is not for calculation
+            // check CRC, for Query, gateway_token is included for calculation
             const crc = (BufferOrCmd[BufferOrCmd.length - 2] << 8) + BufferOrCmd[BufferOrCmd.length - 1]
-            const calculated_crc = crc16(BufferOrCmd.slice(0, BufferOrCmd.length - 2))
+            let token_buffer = Buffer.alloc(4)
+            token_buffer[0] = (gwToken >> 24) & 0xFF;
+            token_buffer[1] = (gwToken >> 16) & 0xFF;
+            token_buffer[2] = (gwToken >> 8) & 0xFF;
+            token_buffer[3] = gwToken & 0xFF;
+
+            let b = appendToBuffer(BufferOrCmd.slice(0, BufferOrCmd.length - 2), token_buffer)
+            const calculated_crc = crc16(b)
+
             if (crc != calculated_crc) {
                 this.bad = true
                 this.info = "bad crc"
@@ -130,7 +138,7 @@ class MacFrame {
     static CMD_RegAccept = 0x50
     static CMD_RequireReg = 0x60
 
-    static from(buffer) {
+    static from(buffer, gwToken) {
         let cmd = buffer[0]
         switch (cmd) {
             case this.CMD_Down:
@@ -141,6 +149,7 @@ class MacFrame {
                 return new MacFrameQuery(buffer)
                 break
             case this.CMD_RegAccept:
+                return new MacFrameRegAccept(buffer, gwToken)
                 break
             case this.CMD_RequireReg:
                 break
@@ -159,4 +168,4 @@ const CMD_NAME_MAP = {
     [MacFrame.CMD_RequireReg]: "RequireReg"
 }
 
-module.exports = { CMD_NAME_MAP, MacFrame, MacFrameQuery, MacFrameRegRequest }
+module.exports = { CMD_NAME_MAP, MacFrame, MacFrameQuery, MacFrameRegRequest, MacFrameRegAccept }
