@@ -1,6 +1,6 @@
 {
     "cmd": 48,
-    "devid": 1,
+    "devid": 4294967295,
     "frameseq": 1,
     "nonce": 22,
     "gwtoken": 1234,

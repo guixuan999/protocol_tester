@@ -35,8 +35,11 @@ function handleConnectSerial(event, params) {
         mainWindow.webContents.send('serial:received'/*, message*/)
 
         // update gateway_token
-        if ((frame.cmd == MacFrame.CMD_Query) && (gateway_token === undefined)) {
-          gateway_token = frame.gateway_token
+        if (!frame.bad) {
+          if (((frame.cmd == MacFrame.CMD_Query) && (gateway_token === undefined)) ||
+            (frame.cmd == MacFrame.CMD_RequireReg)) {
+            gateway_token = frame.gateway_token
+          }
         }
 
         // broadcast to termial process, but no need for bad frame
@@ -224,9 +227,9 @@ function convert2record(direction, frame, buffer, bad_crc) {
   // 将十六进制字符串格式化为目标格式
   const formattedString = `Byte[${hexString.length / 2}]=> [ ${hexString.match(/.{1,2}/g).join(' ')} ]`;
 
-  if(bad_crc) {
+  if (bad_crc) {
     frame.bad = true,
-    frame.info = "bad crc"
+      frame.info = "bad crc"
   }
 
   return {
