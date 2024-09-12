@@ -63,4 +63,16 @@ function appendToBuffer(originalBuffer, dataToAppend) {
     return newBuffer;
 }
 
-module.exports = { get_now_str, crc16, sleep, isEmptyObject, getRandomInt, appendToBuffer }
+function splitBuffer(buffer, N) {
+    let result = [];
+    let totalLength = buffer.length;
+
+    for (let i = 0; i < totalLength; i += N) {
+        let chunk = buffer.slice(i, Math.min(i + N, totalLength));
+        result.push(chunk);
+    }
+
+    return result;
+}
+
+module.exports = { get_now_str, crc16, sleep, isEmptyObject, getRandomInt, appendToBuffer, splitBuffer }

@@ -163,6 +163,14 @@ const terminal_template = ref(JSON.stringify({
       delay_max: 500,
       delay_rand: false,
       bad_crc: false
+    },
+    {
+      msg_type: "down",
+      ack: true,
+      delay_min: 50,
+      delay_max: 500,
+      delay_rand: false,
+      bad_crc: false
     }
   ]
 }))
@@ -293,6 +301,8 @@ function stopAll() {
 function tableRowClassName({row}) {
   if(row.bad) {
     return "bad-class"
+  } else if(row.direction == "DATA_ASSEMBLED") {
+    return "data-assembled-class"
   }
   return ""
 }
@@ -404,8 +414,8 @@ const tableTerminals = ref([])
               :row-class-name="tableRowClassName" 
               border style="width: 100%">
             <el-table-column prop="date" label="Date" width="200" />
-            <el-table-column prop="direction" label="Direction" width="120" />
-            <el-table-column prop="bad" label="Bad" width="120" />
+            <el-table-column prop="direction" label="Direction" width="150" />
+            <el-table-column prop="bad" label="Bad" width="60" />
             <el-table-column prop="info" label="Info" width="120" />
             <el-table-column prop="cmd" label="CMD" width="120" />
             <el-table-column prop="device_id" label="Device ID" width="120" />
@@ -471,5 +481,9 @@ const tableTerminals = ref([])
 而是 Vue 以及其他前端框架（如 Web Components 或 Shadow DOM）中为了支持样式作用域隔离而引入的特殊语法。 */
 .el-table >>> .bad-class {
   background-color: rgb(237, 180, 180);
+}
+
+.el-table >>> .data-assembled-class {
+  background-color: rgb(213, 226, 225);
 }
 </style>

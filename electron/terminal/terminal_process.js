@@ -1,5 +1,5 @@
-import { CMD_NAME_MAP, MacFrame, MacFrameRegRequest } from "./mac_frames.cjs"
-import { getRandomInt } from "../utils.cjs"
+import { CMD_NAME_MAP, MacFrame, MacFrameRegRequest, MacFrameUp } from "./mac_frames.cjs"
+import { getRandomInt, splitBuffer } from "../utils.cjs"
 let settings = JSON.parse(process.argv[2])
 let gateway_token
 let nonce
@@ -8,8 +8,8 @@ let frame_seq = 0
 
 let PacketAssembly = { // for Down frames
     state: "pre",   // "pre": waiting for start bit
-                    // "started": start bit received (and waiting for middle packages or stop bit)
-                    // "stopped": stop bit received (currently not used)
+    // "started": start bit received (and waiting for middle packages or stop bit)
+    // "stopped": stop bit received (currently not used)
     current_seq: 0, // the frame_seq of last received package
     package: [],    // append bytes for each expected package here 
     timer: null,    // timer create by setTimeout()
@@ -25,7 +25,6 @@ function generate_seq() {
 }
 
 process.on("message", (message) => {
-    console.log(`terminal with device_id ${settings.device_id} message in:`, message)
     // message looks like:
     // {
     //     type: 'RF_IN',
@@ -46,17 +45,17 @@ process.on("message", (message) => {
         if (frame.bad) {
             console.log("bad RF in package, discard...")
         } else if ((frame.device_id != settings.device_id) && (frame.device_id != 0xFFFFFFFF) && (frame.short_addr != short_addr)) {
-            console.log(`RF in package not for me(device_id ${settings.device_id}), discard...`)
+            console.log(`RF in package not for me[device_id ${settings.device_id}], discard...`)
         } else {
-            console.log(`RF in package for me(device_id ${settings.device_id}), processing...`)
+            console.log(`RF in package for me[device_id ${settings.device_id}], processing...`)
             switch (frame.cmd) {
                 case MacFrame.CMD_Query:
                     if (gateway_token === undefined) {
-                        console.log(`[dev ${settings.device_id}] update gateway_token=${frame.gateway_token}`)
+                        console.log(`[device_id ${settings.device_id}] update gateway_token=${frame.gateway_token}`)
                         gateway_token = frame.gateway_token
                     }
                     if (nonce === undefined) {
-                        console.log(`[dev ${settings.device_id}] initial update nonce=${frame.nonce}`)
+                        console.log(`[device_id ${settings.device_id}] initial update nonce=${frame.nonce}`)
                         nonce = frame.nonce
                     }
 
@@ -67,7 +66,6 @@ process.on("message", (message) => {
                         f.frame_seq = generate_seq()
 
                         let { response, delay, bad_crc } = calulateResponseParams(frame.cmd)
-                        console.log("delay =", delay)
                         if (response) {
                             setTimeout(() => {
                                 process.send({
@@ -80,15 +78,15 @@ process.on("message", (message) => {
                     }
                     break
                 case MacFrame.CMD_RegAccept:
-                    console.log(`[dev ${settings.device_id}] update short_addr=${frame.short_addr}`)
+                    console.log(`[device_id ${settings.device_id}] update short_addr=${frame.short_addr}`)
                     short_addr = frame.short_addr
                     break
                 case MacFrame.CMD_RequireReg:
                     if (typeof short_addr != "undefined") {
-                        console.log(`[dev ${settings.device_id}] update gateway_token=${frame.gateway_token}`)
+                        console.log(`[device_id ${settings.device_id}] update gateway_token=${frame.gateway_token}`)
                         gateway_token = frame.gateway_token
 
-                        console.log(`[dev ${settings.device_id}] update nonce=${frame.nonce}`)
+                        console.log(`[device_id ${settings.device_id}] update nonce=${frame.nonce}`)
                         nonce = frame.nonce
 
                         // send RegRequest
@@ -97,7 +95,6 @@ process.on("message", (message) => {
                         f.frame_seq = generate_seq()
 
                         let { response, delay, bad_crc } = calulateResponseParams(frame.cmd)
-                        console.log("delay =", delay)
                         if (response) {
                             setTimeout(() => {
                                 process.send({
@@ -112,13 +109,45 @@ process.on("message", (message) => {
 
                     break
                 case MacFrame.CMD_Down:
-                    console.log("Down: ", frame)
                     // 分包拼接
                     let assembled = assemble(frame)
-                    if(assembled) {
+                    if (assembled) {
                         const hexString = assembled.toString("hex");
                         const formattedString = `Byte[${hexString.length / 2}]=> [ ${hexString.match(/.{1,2}/g).join(' ')} ]`;
                         console.log("Assembled Data from Down-Frames:", formattedString)
+                        // send to main process for display
+                        process.send({
+                            type: "DATA_ASSEMBLED",
+                            cmd: MacFrame.CMD_Down,
+                            data: assembled,
+                            device_id: settings.device_id,
+                            short_addr: short_addr
+                        })
+
+                        // echo
+                        let { response, delay, bad_crc } = calulateResponseParams(frame.cmd)
+                        if (response) {
+                            let bufs = splitBuffer(assembled, 13)
+                            bufs.forEach((b, i) => {
+
+                                let f = new MacFrameUp(MacFrame.CMD_Up);
+                                f.short_addr = short_addr;
+                                f.frame_seq = generate_seq();
+                                f.start_bit = 0;
+                                f.stop_bit = 0;
+                                if(i == 0)  f.start_bit = 1;
+                                if(i == bufs.length - 1) f.stop_bit = 1;
+                                f.datalen = b.length;
+                                f.data = b;
+                                setTimeout(() => {
+                                    process.send({
+                                        type: "RF_OUT",
+                                        data: f,
+                                        bad_crc
+                                    })
+                                }, (i+1) * delay)
+                            })
+                        }
                     }
                     break
             }
@@ -146,10 +175,10 @@ function calulateResponseParams(cmd) {
 }
 
 function assemble(frame) {
-    switch(PacketAssembly.state) {
+    switch (PacketAssembly.state) {
         case "pre":
-            if(frame.start_bit) { // we only accept start bit in this state
-                if(frame.stop_bit) {
+            if (frame.start_bit) { // we only accept start bit in this state
+                if (frame.stop_bit) {
                     return Buffer.from(frame.data.data)
                 }
                 PacketAssembly.package.length = 0
@@ -160,14 +189,14 @@ function assemble(frame) {
                     PacketAssembly.package.length = 0
                     PacketAssembly.timer = null
                     PacketAssembly.state = "pre"
-                }, 10000)
+                }, 1000)
                 PacketAssembly.state = "started"
             }
             break
         case "started":
-            if(((PacketAssembly.current_seq + 1) % 255) == frame.frame_seq) {
-                if(!frame.start_bit) { // we don't accept start bit followed by another start bit
-                    if(frame.stop_bit) {
+            if (((PacketAssembly.current_seq + 1) % 255) == frame.frame_seq) {
+                if (!frame.start_bit) { // we don't accept start bit followed by another start bit
+                    if (frame.stop_bit) {
                         clearTimeout(PacketAssembly.timer)
                         PacketAssembly.timer = null
 
@@ -180,7 +209,7 @@ function assemble(frame) {
                         frame.data.data.forEach(byte => PacketAssembly.package.push(byte))
                         PacketAssembly.current_seq = frame.frame_seq
                     }
-                }    
+                }
             }
             break
     }

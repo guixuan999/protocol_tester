@@ -4,7 +4,7 @@ const { SerialPort } = require('serialport')
 const { fork } = require('node:child_process');
 const { get_now_str, crc16 } = require('./utils.cjs')
 const { initDatabase, insertRecord, queryRecords } = require("./database.cjs")
-const { CMD_NAME_MAP, MacFrame, MacFrameRegRequest } = require("./terminal/mac_frames.cjs");
+const { CMD_NAME_MAP, MacFrame, MacFrameRegRequest, MacFrameUp } = require("./terminal/mac_frames.cjs");
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -15,10 +15,9 @@ async function handleListSerial(event) {
 }
 
 function handleConnectSerial(event, params) {
-  console.log("handleConnectSerial()", params)
   serial_process = fork(`${__dirname}/ota_interface/radio_process.js`, [JSON.stringify(params)])
   serial_process.on("message", (message) => {
-    console.log("from serial_process:", message)
+    console.log("message (code: %s) from serial_process", message.code)
     switch (message.code) {
       case "init":
         mainWindow.webContents.send('result:serial-connect', message)
@@ -28,8 +27,6 @@ function handleConnectSerial(event, params) {
         var buffer = Buffer.from(message.raw.data)
         let frame = MacFrame.from(buffer, gateway_token)
         let record = convert2record("IN", frame, buffer)
-        console.log("record", record)
-
         insertRecord("packages", record)
         // inform rendering process a package is received
         mainWindow.webContents.send('serial:received'/*, message*/)
@@ -99,19 +96,21 @@ function handleStartTerminals(event, params) {
           info: `terminal device_id ${i.device_id} created OK`
         })
         proc.on("message", message => {
-          console.log(`message from terminal process[dev ${i.device_id}]: `, message)
+          console.log(`message from terminal process[device_id ${i.device_id}]: `, message.type)
           if (message.type == "RF_OUT") {
             switch (message.data.cmd) {
               case MacFrame.CMD_RegRequest:
                 Object.setPrototypeOf(message.data, MacFrameRegRequest.prototype)
                 break
+              case MacFrame.CMD_Up:
+                message.data.data = Buffer.from(message.data.data.data)
+                Object.setPrototypeOf(message.data, MacFrameUp.prototype)
+                break
             }
-
+           
             let buffer = message.data.pack(gateway_token, message.bad_crc)
 
             let record = convert2record("OUT", message.data, buffer, message.bad_crc)
-            console.log("record", record)
-
             insertRecord("packages", record)
             // inform rendering process a package will be sent
             mainWindow.webContents.send('serial:received'/*, message*/)
@@ -121,9 +120,17 @@ function handleStartTerminals(event, params) {
               type: message.type,
               data: buffer
             })
+          } else if(message.type == "DATA_ASSEMBLED") {
+            let fakeFrame = {
+              cmd: message.cmd,
+              device_id: message.device_id,
+              short_addr: message.short_addr,
+            }
+            let record = convert2record(message.type, fakeFrame, Buffer.from(message.data.data), false)
+            insertRecord("packages", record)
+            // inform rendering process a package will be sent
+            mainWindow.webContents.send('serial:received'/*, message*/)
           }
-
-
         })
       }
     } catch (err) {
@@ -164,8 +171,6 @@ async function handleDisconnectSerial() {
 }
 
 async function handleGetPackages(event, params) {
-  console.log(params)
-
   return new Promise((resolve, reject) => {
     resolve(queryRecords("packages", params));
   });

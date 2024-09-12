@@ -79,13 +79,53 @@ class MacFrameRegRequest {
         buffer[8] = (gwToken >> 8) & 0xFF;
         buffer[9] = gwToken & 0xFF;
         let crc = crc16(buffer);
-        if(bad_crc) {
+        if (bad_crc) {
             crc = crc + getRandomInt(1, 255)
         }
         buffer[6] = (crc >> 8) & 0xFF;
         buffer[7] = crc & 0xFF;
 
         return buffer.slice(0, 8)
+    }
+}
+
+class MacFrameUp {
+    constructor(BufferOrCmd) {
+        this.bad = false  // indicate if this is a bad one
+        this.info = "" // indicate the information for bad one
+
+        if (BufferOrCmd === null || BufferOrCmd === undefined) {
+            this.bad = true
+            return
+        } else if (BufferOrCmd.constructor.name == 'Number') {
+            this.cmd = BufferOrCmd
+        } else if (BufferOrCmd.constructor.name == 'Buffer') {
+            // not implemented!
+        }
+    }
+
+    pack(gwToken, bad_crc) {
+        let len = 5; // 5: Data and CRC16 not included
+        var buffer = Buffer.alloc(len);
+        buffer[0] = this.cmd;
+        buffer[1] = (this.short_addr >> 8) & 0xFF;
+        buffer[2] = this.short_addr & 0xFF;
+        buffer[3] = this.frame_seq & 0xFF;
+        buffer[4] = (this.start_bit << 7) + (this.stop_bit << 6) + this.datalen;
+        buffer = appendToBuffer(buffer, this.data);
+        let token_buffer = Buffer.alloc(4)
+        token_buffer[0] = (gwToken >> 24) & 0xFF;
+        token_buffer[1] = (gwToken >> 16) & 0xFF;
+        token_buffer[2] = (gwToken >> 8) & 0xFF;
+        token_buffer[3] = gwToken & 0xFF;
+        buffer = appendToBuffer(buffer, token_buffer);
+        let crc = crc16(buffer);
+        if (bad_crc) {
+            crc = crc + getRandomInt(1, 255)
+        }
+        buffer[5 + this.datalen] = (crc >> 8) & 0xFF;
+        buffer[5 + this.datalen + 1] = crc & 0xFF;
+        return buffer.slice(0, 5 + this.datalen + 2)
     }
 }
 
@@ -151,10 +191,10 @@ class MacFrameDown {
                 return
             } else {
                 let datalen = BufferOrCmd[4] & 0x3F
-                if(datalen + 7 != BufferOrCmd.length) {
+                if (datalen + 7 != BufferOrCmd.length) {
                     this.bad = true
                     this.info = "bad length"
-                    return  
+                    return
                 }
             }
             // check CRC, for Down, gateway_token is included for calculation
@@ -268,4 +308,4 @@ const CMD_NAME_MAP = {
     [MacFrame.CMD_RequireReg]: "RequireReg"
 }
 
-module.exports = { CMD_NAME_MAP, MacFrame, MacFrameQuery, MacFrameRegRequest, MacFrameRegAccept, MacFrameRequireReg, MacFrameDown }
+module.exports = { CMD_NAME_MAP, MacFrame, MacFrameQuery, MacFrameRegRequest, MacFrameRegAccept, MacFrameRequireReg, MacFrameDown, MacFrameUp }

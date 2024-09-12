@@ -4,7 +4,6 @@ import {sleep} from '../utils.cjs'
 const radio = new SerialRadio(JSON.parse(process.argv[2]))
 
 radio.onInit(function (data) {
-  console.log("init:", data)
   process.send({ code: "init", result: data.result, info: data.info })
   if (!data.result) {
     // if no this line, and when run to here this process will also exit, but with code 0
@@ -13,8 +12,6 @@ radio.onInit(function (data) {
 })
 
 radio.onReceive(function (data) {
-  console.log("received:", data)
-  
   process.send({ code: "in", raw: data })
 })
 radio.init()

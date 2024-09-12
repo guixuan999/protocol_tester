@@ -134,6 +134,9 @@ def generate(tpl, has_crc):
         return bytes(ba)
 
 def parsecmd(cmd):
+    if cmd == "exit":
+        sys.exit(0)
+        
     tokens = cmd.split()
     if len(tokens) < 2:
         return False, False, None

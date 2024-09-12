@@ -14,8 +14,6 @@ function createTableIfNotExists(tableName, columns) {
         if (err) {
             console.error(`Failed to create table ${tableName}:`, err.message);
             process.exit(1);
-        } else {
-            console.log(`Table ${tableName} is ready.`);
         }
     });
 }
@@ -42,7 +40,7 @@ async function insertRecord(table, data) {
     // so we promisify database.run() as runAsync()
     try {
         const r = await runAsync(sql, Object.values(data))
-        console.log(`Record inserted with rowid ${r.lastID}`);
+        //console.log(`Record inserted with rowid ${r.lastID}`);
     } catch (err) {
         console.error('Failed to insert record:', err.message);
     }
