@@ -58,7 +58,7 @@ async function connect_serial(event) {
 
 const total = ref(0) // total packages in database
 const current_page = ref(1)
-const PAGE_SIZE = 15 // this will not change
+const PAGE_SIZE = 10 // this will not change
 
 onMounted(async () => {
   var r = await window.electron.getPackages({ page: 1, pagesize: PAGE_SIZE })
