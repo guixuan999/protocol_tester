@@ -24,7 +24,7 @@ function handleConnectSerial(event, params) {
         break
       case "in":
         // see radio_process.js: from process.send(), message.raw transformed to an object like: { type: 'Buffer', data: [ 18, 52, 86, 120 ] }
-        var buffer = Buffer.from(message.raw.data)
+        let buffer = Buffer.from(message.raw.data)
         let frame = MacFrame.from(buffer, gateway_token)
         let record = convert2record("IN", frame, buffer)
         insertRecord("packages", record)

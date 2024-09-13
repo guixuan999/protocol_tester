@@ -6,7 +6,6 @@ def signal_handler(sig, frame):
     print("\n自定义处理: 检测到 Ctrl+C，程序正在退出...")
     sys.exit(0)  # 正常退出
 
-# 注册信号处理函数
 signal.signal(signal.SIGINT, signal_handler)
 
 COM = sys.argv[1]
@@ -26,17 +25,15 @@ if ser.is_open:
 def serial_reader():
     # 接收数据
     while(True):
-        data = ser.read(100)  # 读取 100 个字节的数据
+        data = ser.read(100)  # 期望读取 100 个字节的数据，但有超时(目前是0.01s)
         if len(data) > 0:
             hex_str = data.hex()
             print("\b\b", end='', flush=True)
             print("recv: %s" % (f"{' '.join(hex_str[i:i+2] for i in range(0, len(hex_str), 2))}"))
             print("> ", end='', flush=True)
 
-# 创建线程
 read_thread = threading.Thread(target=serial_reader)
-read_thread.daemon = True  # 设置为守护线程
-# 启动线程
+read_thread.daemon = True
 read_thread.start()
 
 # read templates
@@ -115,12 +112,12 @@ def generate(tpl, has_crc):
         else:
             tpl["start"] = 0
 
-        if tpl["end"]:
-            tpl["end"] = 1
+        if tpl["stop"]:
+            tpl["stop"] = 1
         else:
-            tpl["end"] = 0
+            tpl["stop"] = 0
 
-        ba[4] = (tpl["start"] << 7) + (tpl["end"] << 6) + (tpl["datalen"] & 0x3F)
+        ba[4] = (tpl["start"] << 7) + (tpl["stop"] << 6) + (tpl["datalen"] & 0x3F)
         ba[5:5+tpl["datalen"]] = tpl["data"]
 
         if has_crc:
@@ -194,7 +191,7 @@ def gen_seq(start=0):
         yield num
         num += 1
         if num == 256:
-            num = start
+            num = 0
 seq = gen_seq()
 
 gateway_token = 0x00007AC1

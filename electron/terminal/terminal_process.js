@@ -65,7 +65,7 @@ process.on("message", (message) => {
                         f.device_id = settings.device_id
                         f.frame_seq = generate_seq()
 
-                        let { response, delay, bad_crc } = calulateResponseParams(frame.cmd)
+                        let { response, delay, bad_crc } = calculateResponseParams(frame.cmd)
                         if (response) {
                             setTimeout(() => {
                                 process.send({
@@ -94,7 +94,7 @@ process.on("message", (message) => {
                         f.device_id = settings.device_id
                         f.frame_seq = generate_seq()
 
-                        let { response, delay, bad_crc } = calulateResponseParams(frame.cmd)
+                        let { response, delay, bad_crc } = calculateResponseParams(frame.cmd)
                         if (response) {
                             setTimeout(() => {
                                 process.send({
@@ -125,7 +125,7 @@ process.on("message", (message) => {
                         })
 
                         // echo
-                        let { response, delay, bad_crc } = calulateResponseParams(frame.cmd)
+                        let { response, delay, bad_crc } = calculateResponseParams(frame.cmd)
                         if (response) {
                             let bufs = splitBuffer(assembled, 13)
                             bufs.forEach((b, i) => {
@@ -155,7 +155,7 @@ process.on("message", (message) => {
     }
 })
 
-function calulateResponseParams(cmd) {
+function calculateResponseParams(cmd) {
     let on = settings.on
     let response = true, delay = 0, bad_crc = false
     for (const item of on) {

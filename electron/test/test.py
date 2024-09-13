@@ -24,11 +24,11 @@ send_cmd(p, b"send query\n", 0.05)
 
 send_cmd(p, b"send regaccept shortaddr=101\n", 0.2)
 
-send_cmd(p, b"send down shortaddr=101 start=1 end=0 data=0102030405060708090A0B0C0D\n", 0.1)
+send_cmd(p, b"send down shortaddr=101 start=1 stop=0 data=0102030405060708090A0B0C0D\n", 0.1)
 
-send_cmd(p, b"send down shortaddr=101 start=0 end=0 data=1112131415161718191A1B1C1D\n", 0.1)
+send_cmd(p, b"send down shortaddr=101 start=0 stop=0 data=1112131415161718191A1B1C1D\n", 0.1)
 
-send_cmd(p, b"send down shortaddr=101 start=0 end=1 data=908070\n", 0.1)
+send_cmd(p, b"send down shortaddr=101 start=0 stop=1 data=908070\n", 0.1)
 
 while(True):
     time.sleep(1)
